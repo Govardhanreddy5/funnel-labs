@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Layers,
   Lock,
@@ -9,6 +9,7 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -18,10 +19,12 @@ import {
   validateStoreName,
   evaluatePasswordStrength,
 } from '../../utils/validators';
+import { GoogleIcon } from '../../components/common/GoogleIcon';
 
 export const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const location = useLocation();
+  const { signUp, signInWithGoogle } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [storeName, setStoreName] = useState('');
@@ -32,6 +35,33 @@ export const SignUpPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // Check URL parameters for OAuth errors
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const hashParams = new URLSearchParams(
+      location.hash.startsWith('#') ? location.hash.substring(1) : location.hash
+    );
+    const err =
+      searchParams.get('error_description') ||
+      hashParams.get('error_description') ||
+      searchParams.get('error') ||
+      hashParams.get('error');
+    if (err) {
+      setErrorMsg(decodeURIComponent(err.replace(/\+/g, ' ')));
+    }
+  }, [location.search, location.hash]);
+
+  const handleGoogleSignUp = async () => {
+    setErrorMsg(null);
+    setIsGoogleLoading(true);
+    const { error } = await signInWithGoogle('/dashboard');
+    if (error) {
+      setIsGoogleLoading(false);
+      setErrorMsg(error.message || 'Failed to initialize Google authentication. Please try again.');
+    }
+  };
 
   const pwdStrength = evaluatePasswordStrength(password);
 
@@ -136,6 +166,39 @@ export const SignUpPage: React.FC = () => {
               <span>{successMsg}</span>
             </div>
           )}
+
+          {/* Continue with Google Button */}
+          <button
+            id="google-signup-btn"
+            type="button"
+            disabled={isGoogleLoading || isLoading}
+            onClick={handleGoogleSignUp}
+            className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm rounded-xl border border-slate-300 hover:border-slate-400 shadow-xs transition-all active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+          >
+            {isGoogleLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                <span>Redirecting to Google...</span>
+              </>
+            ) : (
+              <>
+                <GoogleIcon className="w-4 h-4" />
+                <span>Continue with Google</span>
+              </>
+            )}
+          </button>
+
+          {/* Clean Divider */}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2.5 text-slate-400 font-medium tracking-wider">
+                or register with email
+              </span>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>

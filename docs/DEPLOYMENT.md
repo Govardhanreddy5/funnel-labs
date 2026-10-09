@@ -58,6 +58,42 @@ In the Supabase SQL Editor, run the migration scripts located in this repository
      - `http://localhost:5173/**` (for local development)
 2. Under **Authentication -> Email Templates**, review password reset and invite emails to use your custom sender domain.
 
+### Step 1.4: Configure Google OAuth Provider (Continue with Google)
+
+#### A. Google Cloud Console Setup:
+1. Navigate to the [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials).
+2. Create or select your Google Cloud project (e.g. `Funnel Labs`).
+3. Configure the **OAuth consent screen** (if not done previously):
+   - User Type: **External**
+   - App Name: `Funnel Labs`
+   - User support email & Developer contact info: your email
+   - Scopes: `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile`
+4. Under **Credentials**, click **Create Credentials** -> **OAuth client ID**:
+   - **Application type**: `Web application`
+   - **Name**: `Funnel Labs Web Client`
+   - **Authorized JavaScript origins**:
+     - `http://localhost:5173` (Local development)
+     - `https://funnel-labs.vercel.app` (Production URL)
+   - **Authorized redirect URIs**:
+     - **Exact Supabase Callback URL**:
+       `https://lxrkseksulgsercthjjp.supabase.co/auth/v1/callback`
+       *(Generic format: `https://<PROJECT-REF>.supabase.co/auth/v1/callback`)*
+5. Click **Create** and copy your **Client ID** and **Client Secret**.
+
+#### B. Supabase Dashboard Provider Configuration:
+1. Navigate to [Supabase Dashboard](https://supabase.com/dashboard) -> Select project `lxrkseksulgsercthjjp`.
+2. Go to **Authentication** -> **Providers** -> **Google**.
+3. Toggle **Enable Sign in with Google** to **Enabled**.
+4. Paste the **Client ID** and **Client Secret** copied from Google Cloud Console.
+5. Click **Save**.
+
+#### C. Supabase URL Configuration:
+In **Authentication** -> **URL Configuration**, confirm your redirect URLs include:
+- `http://localhost:5173/**`
+- `http://localhost:5173/dashboard`
+- `https://funnel-labs.vercel.app/**`
+- `https://funnel-labs.vercel.app/dashboard`
+
 ---
 
 ## 2. Vercel Deployment Setup

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { env } from '../config/env';
 
 export interface UserOrganization {
   id: string;
@@ -17,6 +18,7 @@ interface AuthContextType {
   organizations: UserOrganization[];
   switchOrganization: (orgId: string) => void;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: (redirectTo?: string) => Promise<{ error: Error | null }>;
   signInAsDemo: () => void;
   signUp: (
     email: string,
@@ -136,19 +138,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        refreshOrganizations(session.user.id);
+        const meta = session.user.user_metadata;
+        const inferredStore =
+          meta?.store_name ||
+          meta?.storeName ||
+          (meta?.full_name || meta?.name ? `${meta.full_name || meta.name}'s Store` : undefined);
+        refreshOrganizations(session.user.id, inferredStore);
       }
       setLoading(false);
     });
 
-    // 2. Listen for auth changes
+    // 2. Listen for auth changes (including Google OAuth redirect code exchange)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
-        await refreshOrganizations(newSession.user.id);
+        const meta = newSession.user.user_metadata;
+        const inferredStore =
+          meta?.store_name ||
+          meta?.storeName ||
+          (meta?.full_name || meta?.name ? `${meta.full_name || meta.name}'s Store` : undefined);
+        await refreshOrganizations(newSession.user.id, inferredStore);
       } else {
         setOrganizations([DEMO_ORG]);
         setCurrentOrganization(DEMO_ORG);
@@ -241,6 +253,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     []
   );
 
+  const signInWithGoogle = useCallback(async (customRedirectTo?: string) => {
+    try {
+      const origin =
+        typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+      const baseUrl = env.appUrl || origin;
+      const targetPath = customRedirectTo || '/dashboard';
+      const redirectTo = targetPath.startsWith('http')
+        ? targetPath
+        : `${baseUrl}${targetPath.startsWith('/') ? '' : '/'}${targetPath}`;
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+      if (error) return { error };
+      return { error: null };
+    } catch (err: any) {
+      return { error: err };
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -287,6 +326,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       organizations,
       switchOrganization,
       signIn,
+      signInWithGoogle,
       signInAsDemo,
       signUp,
       signOut,
@@ -301,6 +341,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       organizations,
       switchOrganization,
       signIn,
+      signInWithGoogle,
       signInAsDemo,
       signUp,
       signOut,

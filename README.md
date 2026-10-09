@@ -164,11 +164,12 @@ SUPABASE_SERVICE_ROLE_KEY="your-service-role-secret-key"
 
 ### 5. Authentication & Routes
 
-- `/login` — Sign In with email and password
-- `/register` — Sign Up with email, password, founder name, and D2C store name
+- `/login` — Sign In with email/password or **Continue with Google**
+- `/register` — Sign Up with email/password or **Continue with Google** (automatically provisions organization and founder workspace)
 - `/forgot-password` — Password reset link dispatch
 - `/reset-password` — Secure password update form
 - Protected Routes: Dashboard (`/dashboard`), Experiments (`/experiments`), Campaigns (`/campaigns`), Analytics (`/analytics`), Settings (`/settings`).
+- Google OAuth: Configured via Supabase Auth with OAuth 2.0 PKCE flow, automated organization creation, and verified email identity linking.
 
 ---
 

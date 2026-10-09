@@ -1,21 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Layers, Lock, Mail, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Layers, Lock, Mail, ArrowRight, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { validateEmail, validatePassword } from '../../utils/validators';
+import { GoogleIcon } from '../../components/common/GoogleIcon';
 
 export const SignInPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signInAsDemo } = useAuth();
+  const { signIn, signInWithGoogle, signInAsDemo } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const from = (location.state as any)?.from?.pathname || '/dashboard';
+
+  // Check URL parameters for OAuth errors (e.g. user cancelled Google sign-in or configuration issue)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const hashParams = new URLSearchParams(
+      location.hash.startsWith('#') ? location.hash.substring(1) : location.hash
+    );
+    const err =
+      searchParams.get('error_description') ||
+      hashParams.get('error_description') ||
+      searchParams.get('error') ||
+      hashParams.get('error');
+    if (err) {
+      setErrorMsg(decodeURIComponent(err.replace(/\+/g, ' ')));
+    }
+  }, [location.search, location.hash]);
+
+  const handleGoogleSignIn = async () => {
+    setErrorMsg(null);
+    setIsGoogleLoading(true);
+    const { error } = await signInWithGoogle(from);
+    if (error) {
+      setIsGoogleLoading(false);
+      setErrorMsg(error.message || 'Failed to initialize Google authentication. Please try again.');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,11 +114,47 @@ export const SignInPage: React.FC = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white/95 backdrop-blur-md py-8 px-6 sm:px-8 shadow-2xl rounded-2xl border border-slate-200">
           {errorMsg && (
-            <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-700">
+            <div
+              role="alert"
+              className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-700"
+            >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
               <span>{errorMsg}</span>
             </div>
           )}
+
+          {/* Continue with Google OAuth Button */}
+          <button
+            id="google-signin-btn"
+            type="button"
+            disabled={isGoogleLoading || isLoading}
+            onClick={handleGoogleSignIn}
+            className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm rounded-xl border border-slate-300 hover:border-slate-400 shadow-xs transition-all active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+          >
+            {isGoogleLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                <span>Redirecting to Google...</span>
+              </>
+            ) : (
+              <>
+                <GoogleIcon className="w-4 h-4" />
+                <span>Continue with Google</span>
+              </>
+            )}
+          </button>
+
+          {/* Clean Divider */}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2.5 text-slate-400 font-medium tracking-wider">
+                or sign in with email
+              </span>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>

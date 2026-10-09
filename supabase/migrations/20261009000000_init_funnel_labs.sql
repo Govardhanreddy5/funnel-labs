@@ -433,9 +433,29 @@ DECLARE
   new_org_id UUID;
   user_store_name TEXT;
   user_founder_name TEXT;
+  existing_membership_count INT;
 BEGIN
-  user_store_name := COALESCE(new.raw_user_meta_data->>'store_name', 'Bombay Threads D2C');
-  user_founder_name := COALESCE(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1));
+  -- Check if user already belongs to an organization (e.g. linked identity or invited member)
+  SELECT COUNT(*) INTO existing_membership_count
+  FROM public.organization_members
+  WHERE user_id = new.id;
+
+  IF existing_membership_count > 0 THEN
+    RETURN new;
+  END IF;
+
+  user_founder_name := COALESCE(
+    NULLIF(TRIM(new.raw_user_meta_data->>'full_name'), ''),
+    NULLIF(TRIM(new.raw_user_meta_data->>'name'), ''),
+    NULLIF(TRIM(initcap(split_part(new.email, '@', 1))), ''),
+    'Founder'
+  );
+
+  user_store_name := COALESCE(
+    NULLIF(TRIM(new.raw_user_meta_data->>'store_name'), ''),
+    NULLIF(TRIM(user_founder_name || '''s Store'), ''),
+    'My D2C Store'
+  );
 
   -- 1. Create a default organization for the user
   INSERT INTO public.organizations (name, slug)
@@ -447,7 +467,8 @@ BEGIN
 
   -- 2. Add the user as the owner of the organization
   INSERT INTO public.organization_members (organization_id, user_id, role)
-  VALUES (new_org_id, new.id, 'owner');
+  VALUES (new_org_id, new.id, 'owner')
+  ON CONFLICT (organization_id, user_id) DO NOTHING;
 
   -- 3. Initialize user & store settings
   INSERT INTO public.user_settings (
@@ -470,7 +491,8 @@ BEGIN
     'Shopify',
     'INR (₹)',
     150000
-  );
+  )
+  ON CONFLICT (user_id) DO NOTHING;
 
   RETURN new;
 END;

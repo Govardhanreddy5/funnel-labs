@@ -6,6 +6,7 @@
 
 export interface AppEnvConfig {
   appTitle: string;
+  appUrl: string;
   appEnv: 'development' | 'staging' | 'production';
   appVersion: string;
   supabaseUrl: string;
@@ -67,6 +68,10 @@ if (currentEnv === 'production') {
 
 export const env: AppEnvConfig = {
   appTitle: getEnvVar('VITE_APP_TITLE', 'Funnel Labs — D2C Growth & Experimentation'),
+  appUrl: getEnvVar(
+    'VITE_APP_URL',
+    typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173'
+  ),
   appEnv: currentEnv,
   appVersion: getEnvVar('VITE_APP_VERSION', '1.0.0'),
   supabaseUrl: getEnvVar('VITE_SUPABASE_URL', 'https://lxrkseksulgsercthjjp.supabase.co'),
